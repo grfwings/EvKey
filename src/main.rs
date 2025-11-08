@@ -31,12 +31,26 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
         "play" => {
             if args.len() < 3 {
-                eprintln!("Usage: macromate play <input_file> [--loop]");
+                eprintln!("Usage: macromate play [--loop] <input_file>");
                 return Ok(());
             }
-            let input_file =&args[2];
+
+            // Find the input file (first arg that isn't --loop)
+            let input_file = args[2..]
+                .iter()
+                .find(|arg| arg.as_str() != "--loop")
+                .map(|s| s.as_str());
+
             let loop_flag = args.iter().any(|a| a == "--loop");
-            play_macro(input_file, loop_flag)?;
+
+            match input_file {
+                Some(file) => play_macro(file, loop_flag)?,
+                None => {
+                    eprintln!("Error: No input file specified");
+                    eprintln!("Usage: macromate play [--loop] <input_file>");
+                    return Ok(());
+                }
+            }
         }
         "list-devices" => {
             list_devices()?;
@@ -52,9 +66,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 fn print_usage() {
     println!("MacroMate - AutoHotkey-style macro recorder for Linux\n");
     println!("Usage:");
-    println!("  macromate record <output_file>   Record a macro to file");
-    println!("  macromate play <input_file>      Play back a recorded macro");
-    println!("  macromate list-devices           List available input devices");
+    println!("  macromate record <output_file>       Record a macro to file");
+    println!("  macromate play [--loop] <input_file> Play back a recorded macro");
+    println!("  macromate list-devices               List available input devices");
     println!("\nNote: You may need to run with sudo to access input devices");
 }
 
