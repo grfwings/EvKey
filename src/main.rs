@@ -7,6 +7,8 @@ use std::time::Duration;
 mod recorder;
 mod player;
 mod storage;
+mod state;
+mod keymap;
 
 use recorder::Recorder;
 use player::Player;
