@@ -130,7 +130,15 @@ fn format_state(state: &MacroState) -> String {
 
     // If we have duration but no keys (only mouse/scroll actions), add wait after
     let result = parts.join(" ");
-    if state.duration_ms > 0 && state.keys_pressed.is_empty() && !result.is_empty() {
+    if result.is_empty() {
+        // No actions - just a wait or empty state
+        if state.duration_ms > 0 {
+            format!("wait {}ms", state.duration_ms)
+        } else {
+            "# empty state".to_string()
+        }
+    } else if state.duration_ms > 0 && state.keys_pressed.is_empty() {
+        // Has actions (mouse/scroll) with duration
         format!("{}\nwait {}ms", result, state.duration_ms)
     } else {
         result

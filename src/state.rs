@@ -119,6 +119,14 @@ pub fn events_to_states(events: &[RecordedEvent]) -> Vec<MacroState> {
         states.push(state);
     }
 
+    // Filter out small mouse movements (< 5px) from all states
+    for state in &mut states {
+        let distance = state.mouse_delta.0.abs() + state.mouse_delta.1.abs();
+        if distance < 5 {
+            state.mouse_delta = (0, 0);
+        }
+    }
+
     // Merge consecutive identical states
     merge_consecutive_states(states)
 }
@@ -134,6 +142,7 @@ fn merge_consecutive_states(states: Vec<MacroState>) -> Vec<MacroState> {
 
     for state in states.into_iter().skip(1) {
         // Only merge if keys match and no mouse/scroll movement in either
+        // (small movements already filtered to (0, 0) before merging)
         if current.keys_pressed == state.keys_pressed
             && current.mouse_delta == (0, 0)
             && state.mouse_delta == (0, 0)
