@@ -9,6 +9,7 @@ mod player;
 mod storage;
 mod state;
 mod keymap;
+mod parser;
 
 use recorder::Recorder;
 use player::Player;

@@ -18,8 +18,8 @@ use std::path::Path;
 pub fn save<P: AsRef<Path>>(path: P, events: &[RecordedEvent]) -> io::Result<()> {
     let mut file = File::create(path)?;
 
-    writeln!(file, "# EvKey Macro")?;
-    writeln!(file, "# Layout: QWERTY")?;
+    writeln!(file, "// EvKey Macro")?;
+    writeln!(file, "// Layout: QWERTY")?;
     writeln!(file)?;
 
     // Convert events to states
@@ -45,7 +45,7 @@ pub fn load<P: AsRef<Path>>(path: P) -> io::Result<Vec<RecordedEvent>> {
         let line = line.trim();
 
         // Skip empty lines and comments
-        if line.is_empty() || line.starts_with('#') {
+        if line.is_empty() || line.starts_with("//") {
             continue;
         }
 
@@ -74,7 +74,7 @@ fn format_state(state: &MacroState) -> String {
         if state.duration_ms > 0 {
             return format!("wait {}ms", state.duration_ms);
         } else {
-            return "# empty state".to_string();
+            return "// empty state".to_string();
         }
     }
 
@@ -135,7 +135,7 @@ fn format_state(state: &MacroState) -> String {
         if state.duration_ms > 0 {
             format!("wait {}ms", state.duration_ms)
         } else {
-            "# empty state".to_string()
+            "// empty state".to_string()
         }
     } else if state.duration_ms > 0 && state.keys_pressed.is_empty() {
         // Has actions (mouse/scroll) with duration

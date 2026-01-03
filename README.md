@@ -1,6 +1,6 @@
 # EvKey
 
-EvKey is a keyboard & mouse automation tool for Linux. It uses [libevdev](https://www.freedesktop.org/wiki/Software/libevdev/) for event handling, which means it can be used with Wayland or X11. EvKey was inspired primarily by the [AutoHotkey](https://www.autohotkey.com/) and [ydotool](https://www.autohotkey.com/) projects.
+EvKey is a fast, minimal keyboard & mouse automation tool for Linux. It uses [libevdev](https://www.freedesktop.org/wiki/Software/libevdev/) for event handling, which means it can be used with Wayland or X11. EvKey was inspired primarily by the [AutoHotkey](https://www.autohotkey.com/) and [ydotool](https://www.autohotkey.com/) projects.
 
 ## Features
 
@@ -10,8 +10,7 @@ EvKey is a keyboard & mouse automation tool for Linux. It uses [libevdev](https:
 
 ## Requirements
 
-- Linux
-- Rust
+- A linux kernel with `evdev`
 - Root access or permissions to read `/dev/input/event*` devices
 
 ## Installation
@@ -26,7 +25,7 @@ sudo cp target/release/evkey /usr/local/bin/
 ### Record a macro
 
 ```bash
-# evkey record my_macro.macro
+evkey record my_macro.macro
 ```
 
 ### Play back a macro
