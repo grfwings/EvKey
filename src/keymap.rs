@@ -3,21 +3,10 @@
 //! Currently supports QWERTY layout. Future: XKB integration for multi-layout support.
 
 use std::collections::HashMap;
-
-/// Get human-readable name for a Linux keycode (QWERTY layout)
-pub fn keycode_to_name(keycode: u16) -> Option<String> {
-    let map = get_qwerty_map();
-    map.get(&keycode).map(|s| s.to_string())
-}
-
-/// Get Linux keycode from human-readable name (QWERTY layout)
-pub fn name_to_keycode(name: &str) -> Option<u16> {
-    let map = get_qwerty_reverse_map();
-    map.get(name.to_uppercase().as_str()).copied()
-}
+use std::sync::LazyLock;
 
 /// QWERTY layout keycode to name mapping
-fn get_qwerty_map() -> HashMap<u16, &'static str> {
+static QWERTY_MAP: LazyLock<HashMap<u16, &'static str>> = LazyLock::new(|| {
     HashMap::from([
         // Letters (QWERTY physical layout)
         (16, "Q"),
@@ -89,6 +78,23 @@ fn get_qwerty_map() -> HashMap<u16, &'static str> {
         (97, "RIGHTCTRL"),
         (100, "RIGHTALT"),
 
+        // Lock keys
+        (69, "NUMLOCK"),
+        (70, "SCROLLLOCK"),
+
+        // System keys
+        (99, "SYSRQ"),
+        (119, "PAUSE"),
+
+        // Meta keys
+        (125, "SUPER"),
+        (126, "RIGHTMETA"),
+
+        // Media keys
+        (113, "MUTE"),
+        (114, "VOLUMEDOWN"),
+        (115, "VOLUMEUP"),
+
         // Navigation
         (102, "HOME"),
         (103, "UP"),
@@ -130,16 +136,26 @@ fn get_qwerty_map() -> HashMap<u16, &'static str> {
         (96, "KPENTER"),
         (98, "KPSLASH"),
 
-        // Mouse buttons (for completeness)
+        // Mouse buttons
         (272, "BTN_LEFT"),
         (273, "BTN_RIGHT"),
         (274, "BTN_MIDDLE"),
     ])
-}
+});
 
 /// Reverse mapping: name to keycode
-fn get_qwerty_reverse_map() -> HashMap<&'static str, u16> {
-    get_qwerty_map().into_iter().map(|(k, v)| (v, k)).collect()
+static QWERTY_REVERSE_MAP: LazyLock<HashMap<&'static str, u16>> = LazyLock::new(|| {
+    QWERTY_MAP.iter().map(|(&k, &v)| (v, k)).collect()
+});
+
+/// Get human-readable name for a Linux keycode (QWERTY layout)
+pub fn keycode_to_name(keycode: u16) -> Option<&'static str> {
+    QWERTY_MAP.get(&keycode).copied()
+}
+
+/// Get Linux keycode from human-readable name (QWERTY layout)
+pub fn name_to_keycode(name: &str) -> Option<u16> {
+    QWERTY_REVERSE_MAP.get(name.to_uppercase().as_str()).copied()
 }
 
 #[cfg(test)]
@@ -148,9 +164,9 @@ mod tests {
 
     #[test]
     fn test_keycode_to_name() {
-        assert_eq!(keycode_to_name(17), Some("W".to_string()));
-        assert_eq!(keycode_to_name(30), Some("A".to_string()));
-        assert_eq!(keycode_to_name(57), Some("SPACE".to_string()));
+        assert_eq!(keycode_to_name(17), Some("W"));
+        assert_eq!(keycode_to_name(30), Some("A"));
+        assert_eq!(keycode_to_name(57), Some("SPACE"));
     }
 
     #[test]
@@ -165,6 +181,19 @@ mod tests {
     fn test_roundtrip() {
         let keycode = 17;
         let name = keycode_to_name(keycode).unwrap();
-        assert_eq!(name_to_keycode(&name), Some(keycode));
+        assert_eq!(name_to_keycode(name), Some(keycode));
+    }
+
+    #[test]
+    fn test_new_keycodes() {
+        assert_eq!(keycode_to_name(125), Some("SUPER"));
+        assert_eq!(keycode_to_name(69), Some("NUMLOCK"));
+        assert_eq!(keycode_to_name(99), Some("SYSRQ"));
+        assert_eq!(keycode_to_name(119), Some("PAUSE"));
+        assert_eq!(keycode_to_name(113), Some("MUTE"));
+        assert_eq!(keycode_to_name(114), Some("VOLUMEDOWN"));
+        assert_eq!(keycode_to_name(115), Some("VOLUMEUP"));
+        assert_eq!(keycode_to_name(126), Some("RIGHTMETA"));
+        assert_eq!(keycode_to_name(70), Some("SCROLLLOCK"));
     }
 }

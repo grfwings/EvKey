@@ -1,0 +1,42 @@
+// EvKey Macro
+// Layout: QWERTY
+
+wait 769ms
+// scroll down 1
+wait 298ms
+hold F for 85ms
+wait 6432ms
+hold W for 2156ms
+wait 472ms
+scroll down 1
+wait 184ms
+hold F for 89ms
+wait 6404ms
+hold W for 932ms
+wait 151ms
+hold A for 1128ms
+wait 470ms
+scroll down 1
+wait 205ms
+hold F for 71ms
+wait 6304ms
+hold D for 1040ms
+wait 584ms
+hold W for 193ms
+wait 592ms
+scroll down 1
+wait 320ms
+hold F for 82ms
+wait 6854ms
+hold D for 565ms
+wait 648ms
+scroll down 1
+wait 164ms
+hold F for 52ms
+wait 6849ms
+hold S for 1902ms
+wait 156ms
+hold A for 318ms
+wait 514ms
+hold S for 1332ms
+wait 1605ms

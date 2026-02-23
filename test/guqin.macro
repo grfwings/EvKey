@@ -1,0 +1,36 @@
+# MacroMate Macro
+# Layout: QWERTY
+
+wait 641ms
+hold ESC for 122ms
+wait 950ms
+hold SHIFT for 1068ms
+hold F+SHIFT for 105ms
+hold SHIFT for 674ms
+hold F+SHIFT for 124ms
+hold SHIFT for 507ms
+wait 475ms
+hold H for 150ms
+wait 204ms
+hold J for 147ms
+wait 1129ms
+hold J for 103ms
+wait 149ms
+hold SHIFT for 99ms
+hold Q+SHIFT for 103ms
+hold SHIFT for 29ms
+wait 216ms
+hold J for 99ms
+wait 274ms
+hold H for 165ms
+wait 185ms
+hold SHIFT for 60ms
+hold F+SHIFT for 113ms
+hold SHIFT for 529ms
+wait 331ms
+hold H for 145ms
+wait 218ms
+hold SHIFT for 51ms
+hold F+SHIFT for 93ms
+hold SHIFT for 1154ms
+wait 1567ms

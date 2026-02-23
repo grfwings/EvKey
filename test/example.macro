@@ -1,0 +1,11 @@
+// EvKey Macro
+// Layout: QWERTY
+
+hold W for 100ms
+hold A+W for 50ms
+hold A for 100ms
+wait 200ms
+tap SPACE
+scroll down 3
+wait 100ms
+scroll up 5

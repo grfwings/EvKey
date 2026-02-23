@@ -121,12 +121,10 @@ impl Scanner {
         }
 
         let lexeme = self.current_lexeme();
-        let value: i64 = lexeme.parse().unwrap_or_else(|_| {
-            self.error(&format!("Invalid number: {}", lexeme));
-            0
-        });
-
-        self.add_token_literal(TokenType::Number, Some(value));
+        match lexeme.parse::<i64>() {
+            Ok(value) => self.add_token_literal(TokenType::Number, Some(value)),
+            Err(_) => self.error(&format!("Invalid number: {}", lexeme)),
+        }
     }
 
     fn identifier(&mut self) {
@@ -325,5 +323,53 @@ mod tests {
         assert_eq!(tokens[2].line, 2); // wait
         assert_eq!(tokens[3].line, 2); // 100
         assert_eq!(tokens[4].line, 3); // scroll
+    }
+
+    #[test]
+    fn test_error_lone_slash() {
+        let mut scanner = Scanner::new("/");
+        let result = scanner.scan_tokens();
+        assert!(result.is_err());
+        let errors = result.unwrap_err();
+        assert!(errors[0].contains("Unexpected character '/'"));
+    }
+
+    #[test]
+    fn test_error_lone_minus() {
+        let mut scanner = Scanner::new("-");
+        let result = scanner.scan_tokens();
+        assert!(result.is_err());
+        let errors = result.unwrap_err();
+        assert!(errors[0].contains("Unexpected character '-'"));
+    }
+
+    #[test]
+    fn test_error_unexpected_chars() {
+        let mut scanner = Scanner::new("@");
+        let result = scanner.scan_tokens();
+        assert!(result.is_err());
+        assert!(result.unwrap_err()[0].contains("Unexpected character '@'"));
+
+        let mut scanner = Scanner::new("#");
+        let result = scanner.scan_tokens();
+        assert!(result.is_err());
+        assert!(result.unwrap_err()[0].contains("Unexpected character '#'"));
+    }
+
+    #[test]
+    fn test_error_overflow_number() {
+        // A number too large for i64
+        let mut scanner = Scanner::new("99999999999999999999999999999");
+        let result = scanner.scan_tokens();
+        assert!(result.is_err());
+        assert!(result.unwrap_err()[0].contains("Invalid number"));
+    }
+
+    #[test]
+    fn test_error_number_no_token_emitted() {
+        // On parse failure, no Number token should be emitted
+        let mut scanner = Scanner::new("99999999999999999999999999999");
+        let result = scanner.scan_tokens();
+        assert!(result.is_err());
     }
 }

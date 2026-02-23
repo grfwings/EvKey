@@ -9,31 +9,35 @@ mod player;
 mod storage;
 mod state;
 mod keymap;
+#[allow(dead_code)]
 mod parser;
 
 use recorder::Recorder;
 use player::Player;
+
+const POLL_INTERVAL: Duration = Duration::from_millis(1);
+const PLAYBACK_COUNTDOWN: Duration = Duration::from_secs(3);
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 2 {
         print_usage();
-        return Ok(());
+        std::process::exit(1);
     }
 
     match args[1].as_str() {
         "record" => {
             if args.len() < 3 {
                 eprintln!("Usage: evkey record <output_file>");
-                return Ok(());
+                std::process::exit(1);
             }
             record_macro(&args[2])?;
         }
         "play" => {
             if args.len() < 3 {
                 eprintln!("Usage: evkey play [--loop] <input_file>");
-                return Ok(());
+                std::process::exit(1);
             }
 
             // Find the input file (first arg that isn't --loop)
@@ -49,7 +53,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 None => {
                     eprintln!("Error: No input file specified");
                     eprintln!("Usage: evkey play [--loop] <input_file>");
-                    return Ok(());
+                    std::process::exit(1);
                 }
             }
         }
@@ -58,6 +62,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
         _ => {
             print_usage();
+            std::process::exit(1);
         }
     }
 
@@ -156,7 +161,7 @@ fn record_macro(output_file: &str) -> Result<(), Box<dyn Error>> {
     if device_count == 0 {
         eprintln!("\nError: No keyboard or mouse devices found!");
         eprintln!("Make sure you're running with sudo or have appropriate permissions.");
-        return Ok(());
+        std::process::exit(1);
     }
 
     println!("\nFound {} input device(s)", device_count);
@@ -182,7 +187,7 @@ fn record_macro(output_file: &str) -> Result<(), Box<dyn Error>> {
             },
             Err(e) => eprintln!("Error polling: {}", e),
         }
-        thread::sleep(Duration::from_millis(1));
+        thread::sleep(POLL_INTERVAL);
     }
 
     let events = recorder.stop();
@@ -200,7 +205,7 @@ fn play_macro(input_file: &str, loop_forever: bool) -> Result<(), Box<dyn Error>
 
     if !Path::new(input_file).exists() {
         eprintln!("Error: File '{}' not found", input_file);
-        return Ok(());
+        std::process::exit(1);
     }
 
     println!("Loading macro from {}...", input_file);
@@ -209,7 +214,7 @@ fn play_macro(input_file: &str, loop_forever: bool) -> Result<(), Box<dyn Error>
     println!("Loaded {} events", events.len());
     println!("\nStarting playback in 3 seconds...");
 
-    thread::sleep(Duration::from_secs(3));
+    thread::sleep(PLAYBACK_COUNTDOWN);
 
     let mut player = Player::new("evkey-playback")?;
 

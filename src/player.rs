@@ -6,6 +6,9 @@ use std::io;
 use std::thread;
 use std::time::Duration;
 
+/// Maximum keycode value to register with the virtual device
+const KEY_MAX: u16 = 0x2ff;
+
 pub struct Player {
     device: VirtualDevice,
 }
@@ -15,8 +18,7 @@ impl Player {
     pub fn new(device_name: &str) -> io::Result<Self> {
         // Setup all keyboard keys
         let mut keys = AttributeSet::<KeyCode>::new();
-        // KEY_MAX is 0x2ff (767) - we register all possible keycodes
-        for key_code in 0..=0x2ff {
+        for key_code in 0..=KEY_MAX {
             keys.insert(KeyCode(key_code));
         }
 
@@ -68,23 +70,6 @@ impl Player {
             self.device.emit(&[recorded.event])?;
 
             last_timestamp = recorded.timestamp_us;
-        }
-
-        println!("Playback complete");
-        Ok(())
-    }
-
-    /// Play back events instantly without timing delays
-    pub fn play_instant(&mut self, events: &[RecordedEvent]) -> io::Result<()> {
-        if events.is_empty() {
-            println!("No events to play");
-            return Ok(());
-        }
-
-        println!("Playing {} events (instant mode)...", events.len());
-
-        for recorded in events {
-            self.device.emit(&[recorded.event])?;
         }
 
         println!("Playback complete");

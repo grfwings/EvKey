@@ -38,13 +38,6 @@ impl Recorder {
         Ok(())
     }
 
-    /// Start recording
-    pub fn start(&mut self) {
-        self.start_time = Some(Instant::now());
-        self.events.clear();
-        println!("Recording started...");
-    }
-
     /// Poll all devices and record events
     /// Returns true if recording state changed (started or stopped)
     pub fn poll(&mut self) -> io::Result<bool> {
@@ -55,20 +48,22 @@ impl Recorder {
                 Ok(events) => {
                     for event in events {
                         if let EventSummary::Key(_, key, value) = event.destructure() {
-                            if key == KeyCode::KEY_F1 && value == 1 {
-                                // F1 pressed - toggle recording state
-                                println!("F1 key pressed!");
-                                if self.start_time.is_none() {
-                                    // Start recording
-                                    self.start_time = Some(Instant::now());
-                                    self.events.clear();
-                                    state_changed = true;
-                                } else {
-                                    // Stop recording
-                                    self.start_time = None;
-                                    state_changed = true;
+                            if key == KeyCode::KEY_F1 {
+                                if value == 1 {
+                                    // F1 pressed - toggle recording state
+                                    println!("F1 key pressed!");
+                                    if self.start_time.is_none() {
+                                        // Start recording
+                                        self.start_time = Some(Instant::now());
+                                        self.events.clear();
+                                        state_changed = true;
+                                    } else {
+                                        // Stop recording
+                                        self.start_time = None;
+                                        state_changed = true;
+                                    }
                                 }
-                                continue; // Don't record the F1 press itself
+                                continue; // Don't record F1 press or release
                             }
                         }
                         // Only record events if we're currently recording
@@ -109,8 +104,4 @@ impl Recorder {
         std::mem::take(&mut self.events)
     }
 
-    /// Get currently recorded events without stopping
-    pub fn events(&self) -> &[RecordedEvent] {
-        &self.events
-    }
 }

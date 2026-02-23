@@ -14,6 +14,8 @@ use std::fs::File;
 use std::io::{self, BufRead, BufReader, Write};
 use std::path::Path;
 
+const TAP_DURATION_MS: u64 = 50;
+
 /// Save recorded events as human-readable DSL
 pub fn save<P: AsRef<Path>>(path: P, events: &[RecordedEvent]) -> io::Result<()> {
     let mut file = File::create(path)?;
@@ -27,8 +29,9 @@ pub fn save<P: AsRef<Path>>(path: P, events: &[RecordedEvent]) -> io::Result<()>
 
     // Write each state in DSL format
     for state in &states {
-        let line = format_state(state);
-        writeln!(file, "{}", line)?;
+        for line in format_state(state) {
+            writeln!(file, "{}", line)?;
+        }
     }
 
     Ok(())
@@ -64,47 +67,39 @@ pub fn load<P: AsRef<Path>>(path: P) -> io::Result<Vec<RecordedEvent>> {
     Ok(states_to_events(&states))
 }
 
-/// Format a MacroState as a DSL line
-fn format_state(state: &MacroState) -> String {
-    // Handle empty state (just waiting)
-    if state.keys_pressed.is_empty()
-        && state.mouse_delta == (0, 0)
-        && state.scroll_delta == (0, 0)
-    {
-        if state.duration_ms > 0 {
-            return format!("wait {}ms", state.duration_ms);
-        } else {
-            return "// empty state".to_string();
-        }
-    }
-
-    let mut parts = Vec::new();
+/// Format a MacroState as one or more DSL lines
+fn format_state(state: &MacroState) -> Vec<String> {
+    let mut lines = Vec::new();
 
     // Format keys
     if !state.keys_pressed.is_empty() {
         let mut keys: Vec<String> = state
             .keys_pressed
             .iter()
-            .filter_map(|&code| keymap::keycode_to_name(code))
+            .map(|&code| {
+                keymap::keycode_to_name(code)
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| format!("KEY_{}", code))
+            })
             .collect();
         keys.sort(); // Consistent ordering
 
         if state.duration_ms > 0 {
-            parts.push(format!("hold {} for {}ms", keys.join("+"), state.duration_ms));
+            lines.push(format!("hold {} for {}ms", keys.join("+"), state.duration_ms));
         } else {
-            parts.push(format!("tap {}", keys.join("+")));
+            lines.push(format!("tap {}", keys.join("+")));
         }
     }
 
-    // Format mouse movement
+    // Format mouse movement (separate line — instant action)
     if state.mouse_delta != (0, 0) {
-        parts.push(format!(
+        lines.push(format!(
             "move {} {}",
             state.mouse_delta.0, state.mouse_delta.1
         ));
     }
 
-    // Format scroll
+    // Format scroll (separate line — instant action)
     if state.scroll_delta != (0, 0) {
         if state.scroll_delta.0 != 0 {
             let direction = if state.scroll_delta.0 > 0 {
@@ -112,7 +107,7 @@ fn format_state(state: &MacroState) -> String {
             } else {
                 "down"
             };
-            parts.push(format!("scroll {} {}", direction, state.scroll_delta.0.abs()));
+            lines.push(format!("scroll {} {}", direction, state.scroll_delta.0.abs()));
         }
         if state.scroll_delta.1 != 0 {
             let direction = if state.scroll_delta.1 > 0 {
@@ -120,7 +115,7 @@ fn format_state(state: &MacroState) -> String {
             } else {
                 "left"
             };
-            parts.push(format!(
+            lines.push(format!(
                 "scroll {} {}",
                 direction,
                 state.scroll_delta.1.abs()
@@ -128,21 +123,19 @@ fn format_state(state: &MacroState) -> String {
         }
     }
 
-    // If we have duration but no keys (only mouse/scroll actions), add wait after
-    let result = parts.join(" ");
-    if result.is_empty() {
-        // No actions - just a wait or empty state
+    // Handle empty state or duration-only with mouse/scroll
+    if lines.is_empty() {
         if state.duration_ms > 0 {
-            format!("wait {}ms", state.duration_ms)
+            lines.push(format!("wait {}ms", state.duration_ms));
         } else {
-            "// empty state".to_string()
+            lines.push("// empty state".to_string());
         }
     } else if state.duration_ms > 0 && state.keys_pressed.is_empty() {
-        // Has actions (mouse/scroll) with duration
-        format!("{}\nwait {}ms", result, state.duration_ms)
-    } else {
-        result
+        // Has actions (mouse/scroll) with duration but no keys — add separate wait
+        lines.push(format!("wait {}ms", state.duration_ms));
     }
+
+    lines
 }
 
 /// Parse a DSL line into a MacroState
@@ -243,7 +236,7 @@ fn parse_line(line: &str) -> Result<MacroState, String> {
     if let Some(rest) = line.strip_prefix("tap ") {
         let keys = parse_keys(rest)?;
         return Ok(MacroState {
-            duration_ms: 0,
+            duration_ms: TAP_DURATION_MS,
             keys_pressed: keys,
             mouse_delta: (0, 0),
             scroll_delta: (0, 0),
@@ -270,6 +263,8 @@ fn parse_duration(s: &str) -> Result<u64, String> {
 }
 
 /// Parse key names like "W" or "W+A+SHIFT"
+///
+/// Supports named keys (via keymap) and numeric fallback "KEY_NNN".
 fn parse_keys(s: &str) -> Result<HashSet<u16>, String> {
     let key_names: Vec<&str> = s.split('+').collect();
     let mut keycodes = HashSet::new();
@@ -277,6 +272,11 @@ fn parse_keys(s: &str) -> Result<HashSet<u16>, String> {
     for name in key_names {
         let name = name.trim();
         if let Some(code) = keymap::name_to_keycode(name) {
+            keycodes.insert(code);
+        } else if let Some(num_str) = name.strip_prefix("KEY_") {
+            let code: u16 = num_str
+                .parse()
+                .map_err(|_| format!("Invalid numeric keycode: {}", name))?;
             keycodes.insert(code);
         } else {
             return Err(format!("Unknown key: {}", name));
@@ -350,8 +350,140 @@ mod tests {
             scroll_delta: (-1, 0), // scroll down
         };
 
-        let formatted = format_state(&state);
-        assert!(formatted.contains("scroll down 1"));
-        assert!(formatted.contains("wait 500ms"));
+        let lines = format_state(&state);
+        assert!(lines.iter().any(|l| l.contains("scroll down 1")));
+        assert!(lines.iter().any(|l| l.contains("wait 500ms")));
+    }
+
+    #[test]
+    fn test_tap_duration() {
+        let state = parse_line("tap W").unwrap();
+        assert_eq!(state.duration_ms, TAP_DURATION_MS);
+        assert!(state.keys_pressed.contains(&17));
+    }
+
+    #[test]
+    fn test_unknown_keycode_fallback() {
+        // A keycode not in our map should format as KEY_NNN
+        let state = MacroState {
+            duration_ms: 100,
+            keys_pressed: [999].iter().copied().collect(),
+            mouse_delta: (0, 0),
+            scroll_delta: (0, 0),
+        };
+        let lines = format_state(&state);
+        assert_eq!(lines.len(), 1);
+        assert!(lines[0].contains("KEY_999"));
+    }
+
+    #[test]
+    fn test_parse_numeric_keycode() {
+        let state = parse_line("hold KEY_999 for 100ms").unwrap();
+        assert!(state.keys_pressed.contains(&999));
+    }
+
+    #[test]
+    fn test_roundtrip_keys_only() {
+        let original = MacroState {
+            duration_ms: 200,
+            keys_pressed: [17, 30].iter().copied().collect(), // W + A
+            mouse_delta: (0, 0),
+            scroll_delta: (0, 0),
+        };
+
+        let lines = format_state(&original);
+        assert_eq!(lines.len(), 1);
+        let parsed = parse_line(&lines[0]).unwrap();
+        assert_eq!(parsed.duration_ms, original.duration_ms);
+        assert_eq!(parsed.keys_pressed, original.keys_pressed);
+    }
+
+    #[test]
+    fn test_roundtrip_wait() {
+        let original = MacroState {
+            duration_ms: 500,
+            keys_pressed: HashSet::new(),
+            mouse_delta: (0, 0),
+            scroll_delta: (0, 0),
+        };
+
+        let lines = format_state(&original);
+        assert_eq!(lines.len(), 1);
+        let parsed = parse_line(&lines[0]).unwrap();
+        assert_eq!(parsed.duration_ms, original.duration_ms);
+    }
+
+    #[test]
+    fn test_roundtrip_mouse() {
+        let original = MacroState {
+            duration_ms: 0,
+            keys_pressed: HashSet::new(),
+            mouse_delta: (10, -5),
+            scroll_delta: (0, 0),
+        };
+
+        let lines = format_state(&original);
+        assert_eq!(lines.len(), 1);
+        let parsed = parse_line(&lines[0]).unwrap();
+        assert_eq!(parsed.mouse_delta, original.mouse_delta);
+    }
+
+    #[test]
+    fn test_roundtrip_scroll() {
+        let original = MacroState {
+            duration_ms: 0,
+            keys_pressed: HashSet::new(),
+            mouse_delta: (0, 0),
+            scroll_delta: (3, 0),
+        };
+
+        let lines = format_state(&original);
+        assert_eq!(lines.len(), 1);
+        let parsed = parse_line(&lines[0]).unwrap();
+        assert_eq!(parsed.scroll_delta, original.scroll_delta);
+    }
+
+    #[test]
+    fn test_roundtrip_keys_with_mouse() {
+        // Keys + mouse should produce separate lines, each round-trippable
+        let original = MacroState {
+            duration_ms: 200,
+            keys_pressed: [17].iter().copied().collect(),
+            mouse_delta: (10, -5),
+            scroll_delta: (0, 0),
+        };
+
+        let lines = format_state(&original);
+        assert_eq!(lines.len(), 2); // hold line + move line
+
+        let key_state = parse_line(&lines[0]).unwrap();
+        assert_eq!(key_state.duration_ms, 200);
+        assert!(key_state.keys_pressed.contains(&17));
+
+        let move_state = parse_line(&lines[1]).unwrap();
+        assert_eq!(move_state.mouse_delta, (10, -5));
+    }
+
+    #[test]
+    fn test_format_state_keys_with_duration() {
+        let state = MacroState {
+            duration_ms: 100,
+            keys_pressed: [17].iter().copied().collect(),
+            mouse_delta: (0, 0),
+            scroll_delta: (0, 0),
+        };
+        let lines = format_state(&state);
+        assert_eq!(lines, vec!["hold W for 100ms"]);
+    }
+
+    #[test]
+    fn test_invalid_parse_line() {
+        assert!(parse_line("hold").is_err());
+        assert!(parse_line("hold W").is_err());
+        assert!(parse_line("hold W for").is_err());
+        assert!(parse_line("move 10").is_err());
+        assert!(parse_line("scroll diagonal 5").is_err());
+        assert!(parse_line("gibberish").is_err());
+        assert!(parse_line("hold UNKNOWNKEY for 100ms").is_err());
     }
 }
