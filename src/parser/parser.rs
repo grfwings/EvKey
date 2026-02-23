@@ -1,0 +1,115 @@
+//! Parser for EvScript
+//!
+//! Transform takens produced by the scanner into an AST (ast.rs) following the
+//! grammar in LANGUAGE.md using recursive descent.
+
+use crate::parser::token::{Token, TokenType};
+use crate::parser::ast::{Expr, Direction};
+
+struct Parser {
+    tokens: Vec<Token>,
+    current: usize,
+}
+
+impl Parser {
+
+    /// Create a parser from a Vec<Token>
+    fn new(tokens: Vec<Token>) -> Parser {
+        Parser { tokens, current: 0 }
+    }
+
+    /// Peek at the current token without consuming
+    fn peek(&self) -> &Token {
+        self.tokens.get(self.current).unwrap()
+    }
+
+    /// peek at the current token's type
+    fn peek_type(&self) -> TokenType {
+        self.tokens.get(self.current).unwrap().token_type
+    }
+
+    /// Consume and return current token
+    fn advance(&mut self) -> Token {
+        let ret = self.tokens.get(self.current).unwrap();
+        self.current += 1;
+        ret.clone()
+    }
+
+    /// Check if token matches a given type 
+    fn check_token(&self, t: TokenType ) -> bool {
+        self.peek_type() == t
+    }
+
+    /// Consume token if it matches a given type
+    fn match_token(&mut self, t: TokenType ) -> bool {
+        if self.check_token(t) {
+            self.advance();
+            return true;
+        } 
+        false
+    }
+
+    /// Match or error current token
+    fn expect(&mut self, t: TokenType) -> Result<Token, String> {
+        match self.check_token(t) {
+            true => {
+                let current_token = self.peek().clone();
+                self.advance();
+                Ok(current_token)
+            }
+            false => self.error(&format!("Expected {:?}, found {}", t ,self.peek().lexeme))
+        }
+    }
+
+    /// Print an error message
+    fn error<T>(&self, msg: &str) -> Result<T, String> {
+        let line = self.peek().line;
+        let err_msg = format!("line {line}: {msg}");
+        Err(err_msg)
+    }
+
+    fn is_at_end(&self) -> bool {
+        self.peek_type() == TokenType::Eof
+    }
+
+    /// Expression either a Number, Identifier, or UpperIdent
+    fn parse_expr(&mut self) -> Result<Expr, String> {
+        match self.peek_type() {
+            TokenType::Number => {
+                let tok = self.advance();
+                Ok(Expr::Number(tok.literal.unwrap(), tok.line))
+            }
+            TokenType::Identifier => {
+                let tok = self.advance();
+                Ok(Expr::Identifier(tok.lexeme, tok.line))
+            }
+            TokenType::UpperIdent => {
+                let tok = self.advance();
+                Ok(Expr::UpperIdent(tok.lexeme, tok.line))
+            }
+            _ => self.error(&format!("Expected expression, found {}", self.peek().lexeme))
+        }
+    }
+
+    fn parse_direction(&mut self) -> Result<Direction, String> {
+        match self.peek_type() {
+            TokenType::Up => {
+                self.advance();
+                Ok(Direction::Up)
+            }
+            TokenType::Down => {
+                self.advance();
+                Ok(Direction::Down)
+            }
+            TokenType::Left => {
+                self.advance();
+                Ok(Direction::Left)
+            }
+            TokenType::Right => {
+                self.advance();
+                Ok(Direction::Right)
+            }
+            _ => self.error(&format!("Expected direction, found {}", self.peek().lexeme))
+        }
+    }
+}
