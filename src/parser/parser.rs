@@ -4,7 +4,7 @@
 //! grammar in LANGUAGE.md using recursive descent.
 
 use crate::parser::token::{Token, TokenType};
-use crate::parser::ast::{Expr, Direction};
+use crate::parser::ast::*;
 
 struct Parser {
     tokens: Vec<Token>,
@@ -53,8 +53,7 @@ impl Parser {
     fn expect(&mut self, t: TokenType) -> Result<Token, String> {
         match self.check_token(t) {
             true => {
-                let current_token = self.peek().clone();
-                self.advance();
+                let current_token =  self.advance();
                 Ok(current_token)
             }
             false => self.error(&format!("Expected {:?}, found {}", t ,self.peek().lexeme))
@@ -110,6 +109,91 @@ impl Parser {
                 Ok(Direction::Right)
             }
             _ => self.error(&format!("Expected direction, found {}", self.peek().lexeme))
+        }
+    }
+
+    fn parse_key_list(&mut self) -> Result<Vec<Expr>, String> {
+        let mut key_list: Vec<Expr> = Vec::new();
+
+        loop {
+            // check for RightBrace before parsing in case of {} or ,}
+            if self.check_token(TokenType::RightBrace) { return Ok(key_list) }
+
+            key_list.push(self.parse_expr()?);
+            match self.peek_type() {
+                // After consuming an Expr, the only valid tokens are comma or RightBrace
+                TokenType::Comma => {
+                    self.advance();
+                }
+                TokenType::RightBrace => {
+                    return Ok(key_list)
+                }
+                _ => return self.error(&format!("Expected ',' or '}}', got {}", self.peek().lexeme))
+            }
+        }
+    }
+
+    fn parse_hold_list(&mut self) -> Result<Vec<Expr>, String> {
+        let mut hold_list: Vec<Expr> = Vec::new();
+
+        loop {
+
+            // Empty or comma-terminating set
+            if self.check_token(TokenType::RightBrace) { return Ok(hold_list) }
+
+            // Consume the "hold" token 
+            self.expect(TokenType::Hold)?;
+            hold_list.push(self.parse_expr()?);
+
+            match self.peek_type() {
+                TokenType::Comma => {
+                    self.advance();
+                }
+                TokenType::RightBrace => {
+                    return Ok(hold_list)
+                }
+                _ => return self.error(&format!("Expected ',' or '}}', got {}", self.peek().lexeme))
+            }
+        }
+    }
+
+    fn parse_args(&mut self) -> Result<Vec<Expr>, String> {
+        let mut param_list: Vec<Expr> = Vec::new();
+
+        loop {
+            if self.check_token(TokenType::RightParen) { return Ok(param_list) }
+
+            param_list.push(self.parse_expr()?);
+            match self.peek_type() {
+                TokenType::Comma => {
+                    self.advance();
+                }
+                TokenType::RightParen => {
+                    return Ok(param_list)
+                }
+                _ => return self.error(&format!("Expected an expression, got {}", self.peek().lexeme))
+            }
+        }
+    }
+
+    fn parse_params(&mut self) -> Result<Vec<String>, String> {
+        let mut param_list: Vec<String> = Vec::new();
+
+        loop {
+            if self.check_token(TokenType::RightParen) { return Ok(param_list) }
+
+            let tok: Token = self.expect(TokenType::Identifier)?;
+            param_list.push(tok.lexeme);
+
+            match self.peek_type() {
+                TokenType::Comma => {
+                    self.advance();
+                }
+                TokenType::RightParen => {
+                    return Ok(param_list)
+                }
+                _ => return self.error(&format!("Expected an identifier, got {}", self.peek().lexeme))
+            }
         }
     }
 }
