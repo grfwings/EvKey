@@ -9,7 +9,6 @@ mod player;
 mod storage;
 mod state;
 mod keymap;
-#[allow(dead_code)]
 mod parser;
 
 use recorder::Recorder;
