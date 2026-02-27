@@ -255,8 +255,7 @@ impl Parser {
 
             // Anonymous hold list
             TokenType::LeftBrace => {
-                let line: usize = self.peek().line;
-                self.advance();
+                let line: usize = self.advance().line;
 
                 let target: HoldTarget = HoldTarget::InlineSet(self.parse_hold_list()?);
                 self.expect(TokenType::RightBrace)?;
@@ -422,10 +421,11 @@ impl Parser {
 
         loop {
             if self.peek_type() == TokenType::RightBracket {
+                self.advance();
                 return Ok(seq);
             }
             seq.push(self.parse_statement()?);
-            self.expect(TokenType::Semicolon);
+            self.expect(TokenType::Semicolon)?;
         }
     }
 
@@ -458,8 +458,6 @@ impl Parser {
                 let line: usize = self.peek().line;
 
                 let seq = self.parse_sequence()?;
-
-                self.expect(TokenType::RightBracket)?;
 
                 Ok(Value::Sequence(seq, line))
             }
