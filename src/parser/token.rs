@@ -32,9 +32,9 @@ pub enum TokenType {
     Right,
 
     // Literals and identifiers
-    Number,      // 123, -50
-    Identifier,  // lowercase: my_proc, key, duration
-    UpperIdent,  // uppercase: W, SPACE, BTN_LEFT, MY_CONST
+    Number,     // 123, -50
+    Identifier, // lowercase: my_proc, key, duration
+    UpperIdent, // uppercase: W, SPACE, BTN_LEFT, MY_CONST
 
     // Special
     Eof,

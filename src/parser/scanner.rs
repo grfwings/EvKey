@@ -48,12 +48,8 @@ impl Scanner {
             self.scan_token();
         }
 
-        self.tokens.push(Token::new(
-            TokenType::Eof,
-            String::new(),
-            None,
-            self.line,
-        ));
+        self.tokens
+            .push(Token::new(TokenType::Eof, String::new(), None, self.line));
 
         if self.errors.is_empty() {
             Ok(self.tokens.clone())
@@ -146,9 +142,7 @@ impl Scanner {
     }
 
     fn upper_identifier(&mut self) {
-        while self.peek().is_ascii_uppercase()
-            || self.peek().is_ascii_digit()
-            || self.peek() == '_'
+        while self.peek().is_ascii_uppercase() || self.peek().is_ascii_digit() || self.peek() == '_'
         {
             self.advance();
         }
