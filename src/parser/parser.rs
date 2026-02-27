@@ -330,4 +330,111 @@ impl Parser {
             _ => self.error(&format!("Expected an action, got {}", self.peek().lexeme))
         }
     }
+
+    /// (statement ";")*
+    fn parse_statement(&mut self) -> Result<Stmt, String> {
+        match self.peek_type() {
+
+            TokenType::Let => {
+                let def = self.parse_definition()?;
+                Ok(Stmt::Definition(def))
+            }
+
+            _ => {
+                let action = self.parse_action()?;
+                Ok(Stmt::Action(action))
+            }
+        }
+    }
+
+    /// "let" (identifier | const_name) params? "=" value
+    fn parse_definition(&mut self) -> Result<Definition, String> {
+        let line: usize = self.advance().line; // Consume "Let"
+
+        match self.peek_type() {
+
+            TokenType::Identifier | TokenType::UpperIdent => {
+                let name = self.advance().lexeme;
+                let mut params: Vec<String> = Vec::new();
+                if self.peek_type() == TokenType::LeftParen {
+                    self.advance();
+                    params = self.parse_params()?;
+                    self.expect(TokenType::RightParen)?;
+                }
+                self.expect(TokenType::Equals)?;
+                let value = self.parse_value()?;
+                Ok(Definition { name, params, value, line })
+            }
+
+            _ => self.error(&format!("Expected identifier or const, got {}", self.peek().lexeme))
+        }
+    }
+
+    /// "[" statement_list "]"
+    fn parse_sequence(&mut self) -> Result<Vec<Stmt>, String> {
+        self.expect(TokenType::LeftBracket)?;
+
+        let mut seq: Vec<Stmt> = Vec::new();
+
+        loop {
+            if self.peek_type() == TokenType::RightBracket {
+                return Ok(seq);
+            }
+            seq.push(self.parse_statement()?);
+        }
+    }
+
+    // Either number (constant), set (hold_list) or sequence (procedure)
+    fn parse_value(&mut self) -> Result<Value, String> {
+
+        match self.peek_type() {
+
+            TokenType::Number => {
+                let line: usize = self.peek().line;
+                let val: i64 = self.advance().literal.unwrap();
+                Ok(Value::Constant(val, line))
+            }
+
+            TokenType::LeftBrace => {
+                let line: usize = self.advance().line;
+                let set: Vec<Expr> = self.parse_hold_list()?;
+                self.expect(TokenType::RightBrace)?;
+                Ok(Value::Set(set, line))
+            }
+
+            TokenType::Hold => {
+                let line: usize = self.advance().line;
+                self.expect(TokenType::LeftBrace)?;
+                let set: Vec<Expr> = self.parse_key_list()?;
+                self.expect(TokenType::RightBrace)?;
+                Ok(Value::Set(set, line))
+            }
+
+            // Sequence case
+            TokenType::LeftBracket => {
+                let line: usize = self.peek().line;
+
+                let seq = self.parse_sequence()?;
+
+                self.expect(TokenType::RightBracket)?;
+
+                Ok(Value::Sequence(seq, line))
+            }
+            _ => self.error(&format!("Expected a value, got {}", self.peek().lexeme))
+        }
+    }
+
+    fn parse_program(&mut self) -> Result<Program, String> {
+        let mut statements: Vec<Stmt> = Vec::new();
+
+        loop {
+            match self.peek_type() {
+                TokenType::Eof => return Ok(Program { statements }),
+                _ => {
+                    statements.push(self.parse_statement()?);
+                    self.expect(TokenType::Semicolon)?;
+                }
+            }
+        }
+    }
 }
