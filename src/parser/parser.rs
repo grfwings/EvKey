@@ -196,4 +196,138 @@ impl Parser {
             }
         }
     }
+
+    fn parse_action(&mut self) -> Result<Action, String> {
+        match self.peek_type() {
+
+            TokenType::Hold => {
+                let line: usize = self.peek().line;
+
+                self.advance();
+
+                // Could be list or single key
+                match self.peek_type() {
+
+
+                    TokenType::UpperIdent | TokenType::Identifier => {
+                        let target: HoldTarget = HoldTarget::Single(self.parse_expr()?);
+                        self.expect(TokenType::For)?;
+                        let duration: Expr = self.parse_expr()?;
+                        Ok(Action::Hold { target, duration, line })
+                    }
+
+                    // Hold list case
+                    TokenType::LeftBrace => {
+                        self.advance();
+                        let target: HoldTarget  = HoldTarget::InlineSet(self.parse_hold_list()?);
+                        self.expect(TokenType::RightBrace)?;
+                        self.expect(TokenType::For)?;
+                        let duration: Expr = self.parse_expr()?;
+                        Ok(Action::Hold { target, duration, line })
+                    }
+
+                    _ => self.error(&format!("Expected '{{' or an identifier, got {}", self.peek().lexeme))
+                }
+            }
+
+            // Anonymous hold list
+            TokenType::LeftBrace => {
+                let line: usize = self.peek().line;
+                self.advance();
+
+                let target: HoldTarget = HoldTarget::InlineSet(self.parse_hold_list()?);
+                self.expect(TokenType::RightBrace)?;
+                self.expect(TokenType::For)?;
+                let duration: Expr = self.parse_expr()?;
+                Ok(Action::Hold { target, duration, line })
+            }
+
+            TokenType::Tap => {
+                let line: usize = self.advance().line;
+
+                match self.peek_type() {
+
+                    TokenType::Identifier | TokenType::UpperIdent => {
+                        let key: Expr = self.parse_expr()?;
+                        Ok(Action::Tap { key, line })
+                    }
+
+                    _ => self.error(&format!("Expected Identifier or Key, got {}", self.peek().lexeme))
+                }
+
+            }
+
+            TokenType::Wait => {
+                let line: usize = self.advance().line;
+
+                let duration: Expr = self.parse_expr()?;
+
+                Ok(Action::Wait { duration, line })
+            }
+
+            TokenType::Move => {
+                let line: usize = self.advance().line;
+
+                // Safe to unwrap here because we already checking TokenType::Number
+
+                let x = self.expect(TokenType::Number)?.literal.unwrap();
+
+                let y = self.expect(TokenType::Number)?.literal.unwrap();
+
+                Ok(Action::Move { x, y, line })
+            }
+
+            TokenType::Scroll => {
+                let line: usize = self.advance().line;
+
+                let direction = self.parse_direction()?;
+
+                let amount = self.expect(TokenType::Number)?.literal.unwrap();
+
+                Ok(Action::Scroll { direction, amount, line })
+            }
+
+            TokenType::Run => {
+                let line: usize = self.advance().line;
+
+                if self.peek_type() == TokenType::Number {
+                    return self.error(&format!("Expected identifier or constant, got number: {}", self.peek().lexeme));
+                }
+
+                let name = self.advance().lexeme;
+                let mut args: Vec<Expr> = Vec::new();
+
+                // Optional arguments
+                if self.peek_type() == TokenType::LeftParen {
+                    self.advance();
+                    args = self.parse_args()?;
+                    self.expect(TokenType::RightParen)?;
+                }
+
+                Ok(Action::Run { name, args, line })
+
+            }
+
+            TokenType::Identifier | TokenType::UpperIdent => {
+
+                let line: usize = self.peek().line; 
+                let name = self.advance().lexeme;
+                let mut args: Vec<Expr> = Vec::new();
+                // Optional arguments
+                if self.peek_type() == TokenType::LeftParen {
+                    self.advance();
+                    args = self.parse_args()?;
+                    self.expect(TokenType::RightParen)?;
+                }
+
+                self.expect(TokenType::For)?;
+
+                let duration = self.parse_expr()?;
+
+                Ok(Action::UseWithDuration { name, args, duration, line })
+            }
+
+            _ => self.error(&format!("Expected an action, got {}", self.peek().lexeme))
+        }
+    }
 }
