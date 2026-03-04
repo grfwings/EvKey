@@ -478,20 +478,22 @@ impl Parser {
             }
         }
     }
+
+}
+
+/// Helper: parse source string into a Program
+fn parse_str(source: &str) -> Result<Program, String> {
+    use crate::parser::scanner::Scanner;
+    let mut sc = Scanner::new(source);
+    let tokens = sc.scan_tokens().unwrap();
+    let mut parser = Parser::new(tokens);
+    parser.parse_program()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::parser::scanner::Scanner;
-
-    /// Helper: parse source string into a Program
-    fn parse(source: &str) -> Program {
-        let mut sc = Scanner::new(source);
-        let tokens = sc.scan_tokens().unwrap();
-        let mut parser = Parser::new(tokens);
-        parser.parse_program().unwrap()
-    }
 
     /// Helper: parse source string, expecting an error
     fn parse_err(source: &str) -> String {
@@ -503,7 +505,7 @@ mod tests {
 
     #[test]
     fn test_const_definition() {
-        let program = parse("let X = 50;");
+        let program = parse_str("let X = 50;").unwrap();
         assert_eq!(program, Program {
             statements: vec![Stmt::Definition(Definition {
                 name: "X".to_string(),
@@ -516,7 +518,7 @@ mod tests {
 
     #[test]
     fn test_procedure_definition() {
-        let program = parse("let gather = [ hold W for 2000; ];");
+        let program = parse_str("let gather = [ hold W for 2000; ];").unwrap();
         assert_eq!(program, Program {
             statements: vec![Stmt::Definition(Definition {
                 name: "gather".to_string(),
@@ -535,7 +537,7 @@ mod tests {
 
     #[test]
     fn test_set_hold_syntax() {
-        let program = parse("let diagonal = hold { W, D };");
+        let program = parse_str("let diagonal = hold { W, D };").unwrap();
         assert_eq!(program, Program {
             statements: vec![Stmt::Definition(Definition {
                 name: "diagonal".to_string(),
@@ -551,7 +553,7 @@ mod tests {
 
     #[test]
     fn test_set_brace_syntax() {
-        let program = parse("let diagonal = { hold W, hold D };");
+        let program = parse_str("let diagonal = { hold W, hold D };").unwrap();
         assert_eq!(program, Program {
             statements: vec![Stmt::Definition(Definition {
                 name: "diagonal".to_string(),
@@ -567,7 +569,7 @@ mod tests {
 
     #[test]
     fn test_parameterized_definition() {
-        let program = parse("let strafe(key, dur) = [ hold key for dur; ];");
+        let program = parse_str("let strafe(key, dur) = [ hold key for dur; ];").unwrap();
         assert_eq!(program, Program {
             statements: vec![Stmt::Definition(Definition {
                 name: "strafe".to_string(),
@@ -586,7 +588,7 @@ mod tests {
 
     #[test]
     fn test_tap_action() {
-        let program = parse("tap W;");
+        let program = parse_str("tap W;").unwrap();
         assert_eq!(program, Program {
             statements: vec![Stmt::Action(Action::Tap {
                 key: Expr::UpperIdent("W".to_string(), 1),
@@ -597,7 +599,7 @@ mod tests {
 
     #[test]
     fn test_wait_action() {
-        let program = parse("wait 100;");
+        let program = parse_str("wait 100;").unwrap();
         assert_eq!(program, Program {
             statements: vec![Stmt::Action(Action::Wait {
                 duration: Expr::Number(100, 1),
@@ -608,7 +610,7 @@ mod tests {
 
     #[test]
     fn test_move_action() {
-        let program = parse("move 10 -5;");
+        let program = parse_str("move 10 -5;").unwrap();
         assert_eq!(program, Program {
             statements: vec![Stmt::Action(Action::Move {
                 x: 10, y: -5, line: 1,
@@ -618,7 +620,7 @@ mod tests {
 
     #[test]
     fn test_scroll_action() {
-        let program = parse("scroll down 3;");
+        let program = parse_str("scroll down 3;").unwrap();
         assert_eq!(program, Program {
             statements: vec![Stmt::Action(Action::Scroll {
                 direction: Direction::Down,
@@ -630,7 +632,7 @@ mod tests {
 
     #[test]
     fn test_run_action() {
-        let program = parse("run gather;");
+        let program = parse_str("run gather;").unwrap();
         assert_eq!(program, Program {
             statements: vec![Stmt::Action(Action::Run {
                 name: "gather".to_string(),
@@ -642,7 +644,7 @@ mod tests {
 
     #[test]
     fn test_run_with_args() {
-        let program = parse("run strafe(D, 5000);");
+        let program = parse_str("run strafe(D, 5000);").unwrap();
         assert_eq!(program, Program {
             statements: vec![Stmt::Action(Action::Run {
                 name: "strafe".to_string(),
@@ -657,7 +659,7 @@ mod tests {
 
     #[test]
     fn test_use_with_duration() {
-        let program = parse("diagonal for 1000;");
+        let program = parse_str("diagonal for 1000;").unwrap();
         assert_eq!(program, Program {
             statements: vec![Stmt::Action(Action::UseWithDuration {
                 name: "diagonal".to_string(),
@@ -670,7 +672,7 @@ mod tests {
 
     #[test]
     fn test_use_with_duration_and_args() {
-        let program = parse("strafe(D, 5000) for 100;");
+        let program = parse_str("strafe(D, 5000) for 100;").unwrap();
         assert_eq!(program, Program {
             statements: vec![Stmt::Action(Action::UseWithDuration {
                 name: "strafe".to_string(),
@@ -686,7 +688,7 @@ mod tests {
 
     #[test]
     fn test_hold_single_key() {
-        let program = parse("hold W for 1000;");
+        let program = parse_str("hold W for 1000;").unwrap();
         assert_eq!(program, Program {
             statements: vec![Stmt::Action(Action::Hold {
                 target: HoldTarget::Single(Expr::UpperIdent("W".to_string(), 1)),
@@ -698,7 +700,7 @@ mod tests {
 
     #[test]
     fn test_hold_inline_set() {
-        let program = parse("hold { W, D } for 1000;");
+        let program = parse_str("hold { W, D } for 1000;").unwrap();
         assert_eq!(program, Program {
             statements: vec![Stmt::Action(Action::Hold {
                 target: HoldTarget::InlineSet(vec![
@@ -713,7 +715,7 @@ mod tests {
 
     #[test]
     fn test_brace_hold_action() {
-        let program = parse("{ hold W, hold D } for 1000;");
+        let program = parse_str("{ hold W, hold D } for 1000;").unwrap();
         assert_eq!(program, Program {
             statements: vec![Stmt::Action(Action::Hold {
                 target: HoldTarget::InlineSet(vec![
@@ -728,7 +730,7 @@ mod tests {
 
     #[test]
     fn test_trailing_comma_in_set() {
-        let program = parse("hold { W, D, } for 100;");
+        let program = parse_str("hold { W, D, } for 100;").unwrap();
         assert_eq!(program, Program {
             statements: vec![Stmt::Action(Action::Hold {
                 target: HoldTarget::InlineSet(vec![
@@ -743,7 +745,7 @@ mod tests {
 
     #[test]
     fn test_trailing_comma_in_args() {
-        let program = parse("run strafe(D, 5000,);");
+        let program = parse_str("run strafe(D, 5000,);").unwrap();
         assert_eq!(program, Program {
             statements: vec![Stmt::Action(Action::Run {
                 name: "strafe".to_string(),
@@ -758,7 +760,7 @@ mod tests {
 
     #[test]
     fn test_trailing_comma_in_params() {
-        let program = parse("let strafe(key, dur,) = [ hold key for dur; ];");
+        let program = parse_str("let strafe(key, dur,) = [ hold key for dur; ];").unwrap();
         assert_eq!(program, Program {
             statements: vec![Stmt::Definition(Definition {
                 name: "strafe".to_string(),
@@ -777,7 +779,7 @@ mod tests {
 
     #[test]
     fn test_multi_statement_program() {
-        let program = parse("let X = 50;\nhold W for X;\nwait 100;");
+        let program = parse_str("let X = 50;\nhold W for X;\nwait 100;").unwrap();
         assert_eq!(program.statements.len(), 3);
         assert!(matches!(program.statements[0], Stmt::Definition(_)));
         assert!(matches!(program.statements[1], Stmt::Action(Action::Hold { .. })));

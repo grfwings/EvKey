@@ -8,7 +8,7 @@
 
 use crate::keymap;
 use crate::recorder::RecordedEvent;
-use crate::state::{events_to_states, states_to_events, MacroState};
+use crate::state::{MacroState, events_to_states, states_to_events};
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Write};
@@ -85,7 +85,11 @@ fn format_state(state: &MacroState) -> Vec<String> {
         keys.sort(); // Consistent ordering
 
         if state.duration_ms > 0 {
-            lines.push(format!("hold {} for {}ms", keys.join("+"), state.duration_ms));
+            lines.push(format!(
+                "hold {} for {}ms",
+                keys.join("+"),
+                state.duration_ms
+            ));
         } else {
             lines.push(format!("tap {}", keys.join("+")));
         }
@@ -107,7 +111,11 @@ fn format_state(state: &MacroState) -> Vec<String> {
             } else {
                 "down"
             };
-            lines.push(format!("scroll {} {}", direction, state.scroll_delta.0.abs()));
+            lines.push(format!(
+                "scroll {} {}",
+                direction,
+                state.scroll_delta.0.abs()
+            ));
         }
         if state.scroll_delta.1 != 0 {
             let direction = if state.scroll_delta.1 > 0 {
@@ -220,7 +228,7 @@ fn parse_line(line: &str) -> Result<MacroState, String> {
                 return Err(format!(
                     "Invalid scroll direction '{}', use up/down/left/right",
                     direction
-                ))
+                ));
             }
         };
 

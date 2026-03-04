@@ -1,6 +1,6 @@
 //! Recording input events from keyboard and mouse
 
-use evdev::{Device, InputEvent, EventSummary, KeyCode};
+use evdev::{Device, EventSummary, InputEvent, KeyCode};
 use std::io;
 use std::path::Path;
 use std::time::Instant;
@@ -85,7 +85,6 @@ impl Recorder {
                 Err(e) => {
                     eprintln!("Device read error: {}", e);
                 }
-
             }
         }
 
@@ -103,5 +102,4 @@ impl Recorder {
         println!("Recording stopped. Recorded {} events", self.events.len());
         std::mem::take(&mut self.events)
     }
-
 }

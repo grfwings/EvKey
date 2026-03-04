@@ -35,7 +35,6 @@ static QWERTY_MAP: LazyLock<HashMap<u16, &'static str>> = LazyLock::new(|| {
         (48, "B"),
         (49, "N"),
         (50, "M"),
-
         // Numbers row
         (2, "1"),
         (3, "2"),
@@ -49,7 +48,6 @@ static QWERTY_MAP: LazyLock<HashMap<u16, &'static str>> = LazyLock::new(|| {
         (11, "0"),
         (12, "MINUS"),
         (13, "EQUAL"),
-
         // Function keys
         (59, "F1"),
         (60, "F2"),
@@ -63,7 +61,6 @@ static QWERTY_MAP: LazyLock<HashMap<u16, &'static str>> = LazyLock::new(|| {
         (68, "F10"),
         (87, "F11"),
         (88, "F12"),
-
         // Special keys
         (1, "ESC"),
         (14, "BACKSPACE"),
@@ -77,24 +74,19 @@ static QWERTY_MAP: LazyLock<HashMap<u16, &'static str>> = LazyLock::new(|| {
         (58, "CAPSLOCK"),
         (97, "RIGHTCTRL"),
         (100, "RIGHTALT"),
-
         // Lock keys
         (69, "NUMLOCK"),
         (70, "SCROLLLOCK"),
-
         // System keys
         (99, "SYSRQ"),
         (119, "PAUSE"),
-
         // Meta keys
         (125, "SUPER"),
         (126, "RIGHTMETA"),
-
         // Media keys
         (113, "MUTE"),
         (114, "VOLUMEDOWN"),
         (115, "VOLUMEUP"),
-
         // Navigation
         (102, "HOME"),
         (103, "UP"),
@@ -106,7 +98,6 @@ static QWERTY_MAP: LazyLock<HashMap<u16, &'static str>> = LazyLock::new(|| {
         (109, "PAGEDOWN"),
         (110, "INSERT"),
         (111, "DELETE"),
-
         // Punctuation
         (26, "LEFTBRACE"),
         (27, "RIGHTBRACE"),
@@ -117,7 +108,6 @@ static QWERTY_MAP: LazyLock<HashMap<u16, &'static str>> = LazyLock::new(|| {
         (51, "COMMA"),
         (52, "DOT"),
         (53, "SLASH"),
-
         // Keypad
         (55, "KPASTERISK"),
         (71, "KP7"),
@@ -135,7 +125,6 @@ static QWERTY_MAP: LazyLock<HashMap<u16, &'static str>> = LazyLock::new(|| {
         (83, "KPDOT"),
         (96, "KPENTER"),
         (98, "KPSLASH"),
-
         // Mouse buttons
         (272, "BTN_LEFT"),
         (273, "BTN_RIGHT"),
@@ -144,9 +133,8 @@ static QWERTY_MAP: LazyLock<HashMap<u16, &'static str>> = LazyLock::new(|| {
 });
 
 /// Reverse mapping: name to keycode
-static QWERTY_REVERSE_MAP: LazyLock<HashMap<&'static str, u16>> = LazyLock::new(|| {
-    QWERTY_MAP.iter().map(|(&k, &v)| (v, k)).collect()
-});
+static QWERTY_REVERSE_MAP: LazyLock<HashMap<&'static str, u16>> =
+    LazyLock::new(|| QWERTY_MAP.iter().map(|(&k, &v)| (v, k)).collect());
 
 /// Get human-readable name for a Linux keycode (QWERTY layout)
 pub fn keycode_to_name(keycode: u16) -> Option<&'static str> {
@@ -155,7 +143,9 @@ pub fn keycode_to_name(keycode: u16) -> Option<&'static str> {
 
 /// Get Linux keycode from human-readable name (QWERTY layout)
 pub fn name_to_keycode(name: &str) -> Option<u16> {
-    QWERTY_REVERSE_MAP.get(name.to_uppercase().as_str()).copied()
+    QWERTY_REVERSE_MAP
+        .get(name.to_uppercase().as_str())
+        .copied()
 }
 
 #[cfg(test)]

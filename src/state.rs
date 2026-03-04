@@ -91,10 +91,10 @@ pub fn events_to_states(events: &[RecordedEvent]) -> Vec<MacroState> {
                 let value = event.event.value();
 
                 match axis_code {
-                    0 => accumulated_mouse.0 += value,   // REL_X
-                    1 => accumulated_mouse.1 += value,   // REL_Y
-                    8 => accumulated_scroll.0 += value,  // REL_WHEEL (vertical)
-                    6 => accumulated_scroll.1 += value,  // REL_HWHEEL (horizontal)
+                    0 => accumulated_mouse.0 += value,  // REL_X
+                    1 => accumulated_mouse.1 += value,  // REL_Y
+                    8 => accumulated_scroll.0 += value, // REL_WHEEL (vertical)
+                    6 => accumulated_scroll.1 += value, // REL_HWHEEL (horizontal)
                     _ => {}
                 }
             }
@@ -284,7 +284,7 @@ mod tests {
                 event: InputEvent::new(EventType::KEY.0, 17, 1), // W press
             },
             RecordedEvent {
-                timestamp_us: 100_000, // 100ms later
+                timestamp_us: 100_000,                           // 100ms later
                 event: InputEvent::new(EventType::KEY.0, 17, 0), // W release
             },
         ];
@@ -326,15 +326,15 @@ mod tests {
                 event: InputEvent::new(EventType::KEY.0, 17, 1), // W press
             },
             RecordedEvent {
-                timestamp_us: 100_000, // 100ms later
+                timestamp_us: 100_000,                           // 100ms later
                 event: InputEvent::new(EventType::KEY.0, 17, 0), // W release
             },
             RecordedEvent {
-                timestamp_us: 6_100_000, // 6 seconds later
+                timestamp_us: 6_100_000,                         // 6 seconds later
                 event: InputEvent::new(EventType::KEY.0, 30, 1), // A press
             },
             RecordedEvent {
-                timestamp_us: 6_200_000, // 100ms later
+                timestamp_us: 6_200_000,                         // 100ms later
                 event: InputEvent::new(EventType::KEY.0, 30, 0), // A release
             },
         ];
@@ -468,7 +468,7 @@ mod tests {
                 event: InputEvent::new(EventType::RELATIVE.0, 0, 2), // REL_X = 2
             },
             RecordedEvent {
-                timestamp_us: 1000, // 1ms later
+                timestamp_us: 1000,                                  // 1ms later
                 event: InputEvent::new(EventType::RELATIVE.0, 1, 2), // REL_Y = 2
             },
         ];
@@ -535,10 +535,7 @@ mod tests {
         // No state should have W appearing more than once (it's a HashSet, so this is inherent)
         for state in &states {
             if state.keys_pressed.contains(&17) {
-                assert_eq!(
-                    state.keys_pressed.iter().filter(|&&k| k == 17).count(),
-                    1
-                );
+                assert_eq!(state.keys_pressed.iter().filter(|&&k| k == 17).count(), 1);
             }
         }
     }

@@ -4,15 +4,15 @@ use std::path::Path;
 use std::thread;
 use std::time::Duration;
 
-mod recorder;
-mod player;
-mod storage;
-mod state;
 mod keymap;
 mod parser;
+mod player;
+mod recorder;
+mod state;
+mod storage;
 
-use recorder::Recorder;
 use player::Player;
+use recorder::Recorder;
 
 const POLL_INTERVAL: Duration = Duration::from_millis(1);
 const PLAYBACK_COUNTDOWN: Duration = Duration::from_secs(3);
@@ -89,7 +89,8 @@ fn list_devices() -> Result<(), Box<dyn Error>> {
             if name_str.starts_with("event") {
                 match evdev::Device::open(&path) {
                     Ok(device) => {
-                        println!("  {} - {}",
+                        println!(
+                            "  {} - {}",
                             path.display(),
                             device.name().unwrap_or("unknown")
                         );
@@ -125,8 +126,12 @@ fn record_macro(output_file: &str) -> Result<(), Box<dyn Error>> {
                 match evdev::Device::open(&path) {
                     Ok(device) => {
                         // Check if device has keys (keyboard) or relative axes (mouse)
-                        let has_keys = device.supported_keys().map_or(false, |keys| keys.iter().len() > 0);
-                        let has_relative = device.supported_relative_axes().map_or(false, |axes| axes.iter().len() > 0);
+                        let has_keys = device
+                            .supported_keys()
+                            .map_or(false, |keys| keys.iter().len() > 0);
+                        let has_relative = device
+                            .supported_relative_axes()
+                            .map_or(false, |axes| axes.iter().len() > 0);
 
                         if has_keys || has_relative {
                             let device_type = match (has_keys, has_relative) {
@@ -136,7 +141,8 @@ fn record_macro(output_file: &str) -> Result<(), Box<dyn Error>> {
                                 _ => continue,
                             };
 
-                            println!("  {} - {} ({})",
+                            println!(
+                                "  {} - {} ({})",
                                 path.display(),
                                 device.name().unwrap_or("unknown"),
                                 device_type
@@ -183,7 +189,7 @@ fn record_macro(output_file: &str) -> Result<(), Box<dyn Error>> {
                         break;
                     }
                 }
-            },
+            }
             Err(e) => eprintln!("Error polling: {}", e),
         }
         thread::sleep(POLL_INTERVAL);

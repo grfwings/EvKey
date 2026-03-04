@@ -1,7 +1,7 @@
 //! Playing back recorded events
 
 use crate::recorder::RecordedEvent;
-use evdev::{uinput::VirtualDevice, AttributeSet, KeyCode, RelativeAxisCode};
+use evdev::{AttributeSet, KeyCode, RelativeAxisCode, uinput::VirtualDevice};
 use std::io;
 use std::thread;
 use std::time::Duration;
