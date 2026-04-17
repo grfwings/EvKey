@@ -39,15 +39,6 @@ impl Parser {
         self.peek_type() == t
     }
 
-    /// Consume token if it matches a given type
-    fn match_token(&mut self, t: TokenType) -> bool {
-        if self.check_token(t) {
-            self.advance();
-            return true;
-        }
-        false
-    }
-
     /// Match or error current token
     fn expect(&mut self, t: TokenType) -> Result<Token, String> {
         match self.check_token(t) {
@@ -64,10 +55,6 @@ impl Parser {
         let line = self.peek().line;
         let err_msg = format!("line {line}: {msg}");
         Err(err_msg)
-    }
-
-    fn is_at_end(&self) -> bool {
-        self.peek_type() == TokenType::Eof
     }
 
     /// Expression either a Number, Identifier, or UpperIdent
@@ -114,18 +101,17 @@ impl Parser {
         }
     }
 
-    fn parse_key_list(&mut self) -> Result<Vec<Expr>, String> {
-        let mut key_list: Vec<Expr> = Vec::new();
+    /// Parse `hold { KEY, KEY, ... }` shorthand — wraps each key in `SetAction::Hold`.
+    fn parse_key_list(&mut self) -> Result<Vec<SetAction>, String> {
+        let mut key_list: Vec<SetAction> = Vec::new();
 
         loop {
-            // check for RightBrace before parsing in case of {} or ,}
             if self.check_token(TokenType::RightBrace) {
                 return Ok(key_list);
             }
 
-            key_list.push(self.parse_expr()?);
+            key_list.push(SetAction::Hold(self.parse_expr()?));
             match self.peek_type() {
-                // After consuming an Expr, the only valid tokens are comma or RightBrace
                 TokenType::Comma => {
                     self.advance();
                 }
@@ -137,28 +123,53 @@ impl Parser {
         }
     }
 
-    fn parse_hold_list(&mut self) -> Result<Vec<Expr>, String> {
-        let mut hold_list: Vec<Expr> = Vec::new();
+    /// Parse the general `{ action, action, ... }` form.
+    /// Each action can be `hold KEY`, `move INT INT`, or `scroll DIR NUM`.
+    fn parse_set_action_list(&mut self) -> Result<Vec<SetAction>, String> {
+        let mut actions: Vec<SetAction> = Vec::new();
 
         loop {
-            // Empty or comma-terminating set
             if self.check_token(TokenType::RightBrace) {
-                return Ok(hold_list);
+                return Ok(actions);
             }
 
-            // Consume the "hold" token
-            self.expect(TokenType::Hold)?;
-            hold_list.push(self.parse_expr()?);
+            actions.push(self.parse_set_action()?);
 
             match self.peek_type() {
                 TokenType::Comma => {
                     self.advance();
                 }
-                TokenType::RightBrace => return Ok(hold_list),
+                TokenType::RightBrace => return Ok(actions),
                 _ => {
                     return self.error(&format!("Expected ',' or '}}', got {}", self.peek().lexeme));
                 }
             }
+        }
+    }
+
+    /// Parse a single action inside a set: `hold KEY`, `move INT INT`, or `scroll DIR NUM`.
+    fn parse_set_action(&mut self) -> Result<SetAction, String> {
+        match self.peek_type() {
+            TokenType::Hold => {
+                self.advance();
+                Ok(SetAction::Hold(self.parse_expr()?))
+            }
+            TokenType::Move => {
+                let line = self.advance().line;
+                let x = self.expect(TokenType::Number)?.literal.unwrap();
+                let y = self.expect(TokenType::Number)?.literal.unwrap();
+                Ok(SetAction::Move(x, y, line))
+            }
+            TokenType::Scroll => {
+                let line = self.advance().line;
+                let direction = self.parse_direction()?;
+                let amount = self.expect(TokenType::Number)?.literal.unwrap();
+                Ok(SetAction::Scroll(direction, amount, line))
+            }
+            _ => self.error(&format!(
+                "Expected 'hold', 'move', or 'scroll' in set, got {}",
+                self.peek().lexeme
+            )),
         }
     }
 
@@ -257,7 +268,7 @@ impl Parser {
             TokenType::LeftBrace => {
                 let line: usize = self.advance().line;
 
-                let target: HoldTarget = HoldTarget::InlineSet(self.parse_hold_list()?);
+                let target: HoldTarget = HoldTarget::InlineSet(self.parse_set_action_list()?);
                 self.expect(TokenType::RightBrace)?;
                 self.expect(TokenType::For)?;
                 let duration: Expr = self.parse_expr()?;
@@ -440,7 +451,7 @@ impl Parser {
 
             TokenType::LeftBrace => {
                 let line: usize = self.advance().line;
-                let set: Vec<Expr> = self.parse_hold_list()?;
+                let set: Vec<SetAction> = self.parse_set_action_list()?;
                 self.expect(TokenType::RightBrace)?;
                 Ok(Value::Set(set, line))
             }
@@ -448,7 +459,7 @@ impl Parser {
             TokenType::Hold => {
                 let line: usize = self.advance().line;
                 self.expect(TokenType::LeftBrace)?;
-                let set: Vec<Expr> = self.parse_key_list()?;
+                let set: Vec<SetAction> = self.parse_key_list()?;
                 self.expect(TokenType::RightBrace)?;
                 Ok(Value::Set(set, line))
             }
@@ -482,7 +493,7 @@ impl Parser {
 }
 
 /// Helper: parse source string into a Program
-fn parse_str(source: &str) -> Result<Program, String> {
+pub fn parse_str(source: &str) -> Result<Program, String> {
     use crate::parser::scanner::Scanner;
     let mut sc = Scanner::new(source);
     let tokens = sc.scan_tokens().unwrap();
@@ -543,8 +554,8 @@ mod tests {
                 name: "diagonal".to_string(),
                 params: vec![],
                 value: Value::Set(vec![
-                    Expr::UpperIdent("W".to_string(), 1),
-                    Expr::UpperIdent("D".to_string(), 1),
+                    SetAction::Hold(Expr::UpperIdent("W".to_string(), 1)),
+                    SetAction::Hold(Expr::UpperIdent("D".to_string(), 1)),
                 ], 1),
                 line: 1,
             })],
@@ -559,8 +570,8 @@ mod tests {
                 name: "diagonal".to_string(),
                 params: vec![],
                 value: Value::Set(vec![
-                    Expr::UpperIdent("W".to_string(), 1),
-                    Expr::UpperIdent("D".to_string(), 1),
+                    SetAction::Hold(Expr::UpperIdent("W".to_string(), 1)),
+                    SetAction::Hold(Expr::UpperIdent("D".to_string(), 1)),
                 ], 1),
                 line: 1,
             })],
@@ -704,8 +715,8 @@ mod tests {
         assert_eq!(program, Program {
             statements: vec![Stmt::Action(Action::Hold {
                 target: HoldTarget::InlineSet(vec![
-                    Expr::UpperIdent("W".to_string(), 1),
-                    Expr::UpperIdent("D".to_string(), 1),
+                    SetAction::Hold(Expr::UpperIdent("W".to_string(), 1)),
+                    SetAction::Hold(Expr::UpperIdent("D".to_string(), 1)),
                 ]),
                 duration: Expr::Number(1000, 1),
                 line: 1,
@@ -719,8 +730,8 @@ mod tests {
         assert_eq!(program, Program {
             statements: vec![Stmt::Action(Action::Hold {
                 target: HoldTarget::InlineSet(vec![
-                    Expr::UpperIdent("W".to_string(), 1),
-                    Expr::UpperIdent("D".to_string(), 1),
+                    SetAction::Hold(Expr::UpperIdent("W".to_string(), 1)),
+                    SetAction::Hold(Expr::UpperIdent("D".to_string(), 1)),
                 ]),
                 duration: Expr::Number(1000, 1),
                 line: 1,
@@ -734,8 +745,8 @@ mod tests {
         assert_eq!(program, Program {
             statements: vec![Stmt::Action(Action::Hold {
                 target: HoldTarget::InlineSet(vec![
-                    Expr::UpperIdent("W".to_string(), 1),
-                    Expr::UpperIdent("D".to_string(), 1),
+                    SetAction::Hold(Expr::UpperIdent("W".to_string(), 1)),
+                    SetAction::Hold(Expr::UpperIdent("D".to_string(), 1)),
                 ]),
                 duration: Expr::Number(100, 1),
                 line: 1,
@@ -802,5 +813,70 @@ mod tests {
     fn test_error_invalid_action() {
         let err = parse_err("123;");
         assert!(err.contains("Expected"));
+    }
+
+    // --- Extended set tests (move/scroll inside sets) ---
+
+    #[test]
+    fn test_set_with_move() {
+        let program = parse_str("{ hold W, move 10 -5 } for 100;").unwrap();
+        assert_eq!(program, Program {
+            statements: vec![Stmt::Action(Action::Hold {
+                target: HoldTarget::InlineSet(vec![
+                    SetAction::Hold(Expr::UpperIdent("W".to_string(), 1)),
+                    SetAction::Move(10, -5, 1),
+                ]),
+                duration: Expr::Number(100, 1),
+                line: 1,
+            })],
+        });
+    }
+
+    #[test]
+    fn test_set_with_scroll() {
+        let program = parse_str("{ hold W, scroll down 3 } for 200;").unwrap();
+        assert_eq!(program, Program {
+            statements: vec![Stmt::Action(Action::Hold {
+                target: HoldTarget::InlineSet(vec![
+                    SetAction::Hold(Expr::UpperIdent("W".to_string(), 1)),
+                    SetAction::Scroll(Direction::Down, 3, 1),
+                ]),
+                duration: Expr::Number(200, 1),
+                line: 1,
+            })],
+        });
+    }
+
+    #[test]
+    fn test_set_with_hold_move_scroll() {
+        let program = parse_str("{ hold W, hold BTN_LEFT, move 10 -5, scroll down 1 } for 50;").unwrap();
+        assert_eq!(program, Program {
+            statements: vec![Stmt::Action(Action::Hold {
+                target: HoldTarget::InlineSet(vec![
+                    SetAction::Hold(Expr::UpperIdent("W".to_string(), 1)),
+                    SetAction::Hold(Expr::UpperIdent("BTN_LEFT".to_string(), 1)),
+                    SetAction::Move(10, -5, 1),
+                    SetAction::Scroll(Direction::Down, 1, 1),
+                ]),
+                duration: Expr::Number(50, 1),
+                line: 1,
+            })],
+        });
+    }
+
+    #[test]
+    fn test_set_definition_with_move() {
+        let program = parse_str("let attack = { hold W, move 10 0 };").unwrap();
+        assert_eq!(program, Program {
+            statements: vec![Stmt::Definition(Definition {
+                name: "attack".to_string(),
+                params: vec![],
+                value: Value::Set(vec![
+                    SetAction::Hold(Expr::UpperIdent("W".to_string(), 1)),
+                    SetAction::Move(10, 0, 1),
+                ], 1),
+                line: 1,
+            })],
+        });
     }
 }

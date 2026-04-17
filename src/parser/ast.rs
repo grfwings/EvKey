@@ -10,7 +10,7 @@ pub struct Program {
     pub statements: Vec<Stmt>,
 }
 
-/// A statement — either a definition or an action.
+/// A statement, either a definition or an action.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Stmt {
     Definition(Definition),
@@ -26,13 +26,13 @@ pub struct Definition {
     pub line: usize,
 }
 
-/// Right-hand side of a definition.
+/// Righthand side of a definition.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     /// Numeric constant: `let X = 50;`
     Constant(i64, usize),
-    /// Set of keys: `hold { W, S }` or `{ hold W, hold S }`
-    Set(Vec<Expr>, usize),
+    /// Set of simultaneous actions: `hold { W, S }` or `{ hold W, move 10 -5 }`
+    Set(Vec<SetAction>, usize),
     /// Procedure body: `[ stmt; stmt; ]`
     Sequence(Vec<Stmt>, usize),
 }
@@ -73,23 +73,22 @@ pub enum Action {
     },
 }
 
-/// What a `hold` action targets.
 #[derive(Debug, Clone, PartialEq)]
 pub enum HoldTarget {
     /// Single key or parameter: `hold W`, `hold my_param`
     Single(Expr),
-    /// Inline set: `hold { W, S }` or `{ hold W, hold S }`
-    InlineSet(Vec<Expr>),
+    /// Inline set: `hold { W, S }` or `{ hold W, move 10 -5 }`
+    InlineSet(Vec<SetAction>),
 }
 
-/// An expression — resolved to a concrete value by the evaluator.
+/// An expression resolved to a concrete value by the evaluator.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     /// Literal number: `1000`, `-50`
     Number(i64, usize),
     /// Lowercase identifier (parameter or name reference): `duration`, `my_proc`
     Identifier(String, usize),
-    /// Uppercase identifier (key or constant — disambiguated by evaluator): `W`, `TAP_TIME`
+    /// Uppercase identifier (key or constant disambiguated by evaluator): `W`, `TAP_TIME`
     UpperIdent(String, usize),
 }
 
@@ -100,4 +99,15 @@ pub enum Direction {
     Down,
     Left,
     Right,
+}
+
+/// An action inside a set (simultaneous actions).
+#[derive(Debug, Clone, PartialEq)]
+pub enum SetAction {
+    /// `hold W` or `hold param`
+    Hold(Expr),
+    /// `move 10 -5`
+    Move(i64, i64, usize),
+    /// `scroll down 3`
+    Scroll(Direction, i64, usize),
 }

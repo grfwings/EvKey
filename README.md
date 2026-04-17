@@ -25,25 +25,25 @@ sudo cp target/release/evkey /usr/local/bin/
 ### Record a macro
 
 ```bash
-evkey record my_macro.macro
+evkey record my_macro.evs
 ```
 
 ### Play back a macro
 
 ```bash
-evkey play my_macro.macro
+evkey play my_macro.evs
 ```
 
 ## File Format
 
-Coming soon!
+EvKey uses EvScript v2, a simple scripting language for macros. See [LANGUAGE.md](LANGUAGE.md) for the full specification.
 
 ## Future Enhancements
 
 - [x] Hotkey detection to start/stop recording
 - [x] Repeat/loop playback
 - [ ] Configurable hotkeys (currently F1 is hardcoded)
-- [ ] Better scripting language
+- [x] Better scripting language (EvScript v2)
 - [ ] X keyboard extension support
 
 ## License

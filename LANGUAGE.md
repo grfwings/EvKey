@@ -122,24 +122,38 @@ let WALK_DURATION = 2000;
 
 ### Sets
 
-Sets represent simultaneous key holds - multiple keys held at the same time. Sets can ONLY contain `hold` actions.
+Sets represent simultaneous actions. A set can contain any combination of `hold`, `move`, and `scroll` actions, all of which execute at the same time.
 
-**Shorthand syntax** (most common):
+**Shorthand syntax** (hold-only sets, most common):
 ```rust
 let diagonal = hold { W, S };
 let attack = hold { BTN_LEFT, W };
 ```
 
-**Full syntax** (equivalent):
+**Full syntax** (equivalent, allows mixed action types):
 ```rust
 let diagonal = { hold W, hold S };
 let combo = { hold CTRL, hold SHIFT, hold A };
+```
+
+**Mixed sets** (simultaneous keys + mouse/scroll):
+```rust
+// Hold W while moving the mouse
+{ hold W, move 10 -5 } for 100;
+
+// Hold W and click while scrolling
+{ hold W, hold BTN_LEFT, scroll down 1 } for 200;
+
+// Named mixed set
+let attack_move = { hold W, hold BTN_LEFT, move 5 0 };
+attack_move for 500;
 ```
 
 **Anonymous sets** (use without defining):
 ```rust
 hold { W, S } for 1000;
 { hold W, hold SHIFT } for 500;
+{ hold W, move 10 -5 } for 100;
 ```
 
 Sets require a duration when used:
@@ -334,23 +348,27 @@ statement     ::= definition | action
 definition    ::= "let" (identifier | const_name) params? "=" value
 
 value         ::= number          // constant
-                | set             // set of simultaneous key holds
+                | set             // set of simultaneous actions
                 | sequence        // procedure
 
 set           ::= "hold" "{" key_list "}"
-                | "{" hold_list "}"
+                | "{" set_action_list "}"
 
 sequence      ::= "[" statement_list "]"
 
 key_list      ::= key ("," key)* ","?
 
-hold_list     ::= "hold" key ("," "hold" key)* ","?
+set_action_list ::= set_action ("," set_action)* ","?
+
+set_action    ::= "hold" key
+                | "move" int int
+                | "scroll" direction number
 
 statement_list ::= (statement ";")*
 
 action        ::= "hold" key "for" duration
                 | "hold" "{" key_list "}" "for" duration
-                | "{" hold_list "}" "for" duration
+                | "{" set_action_list "}" "for" duration
                 | "tap" (key | identifier)
                 | "wait" duration
                 | "move" int int
